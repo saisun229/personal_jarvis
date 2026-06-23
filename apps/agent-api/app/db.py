@@ -1,77 +1,37 @@
-import json
-import sqlite3
-import uuid
 from datetime import datetime, timezone
 
-from app.config import AGENT_DB_PATH
+from supabase import Client, create_client
 
-_SCHEMA = """
-create table if not exists agent_runs (
-    id text primary key,
-    run_type text not null,
-    status text not null,
-    input text,
-    output text,
-    error text,
-    created_at text not null,
-    updated_at text not null
-);
+from app.config import SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL
 
-create table if not exists daily_briefs (
-    id text primary key,
-    brief_date text not null,
-    summary text not null,
-    payload text,
-    created_at text not null
-);
-"""
-
-
-def get_conn():
-    conn = sqlite3.connect(AGENT_DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+_client: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 
 def init_db():
-    conn = get_conn()
-    conn.executescript(_SCHEMA)
-    conn.commit()
-    conn.close()
+    pass
 
 
 def create_run(run_type: str, input_data: dict) -> str:
-    run_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
-    conn = get_conn()
-    conn.execute(
-        "insert into agent_runs (id, run_type, status, input, output, error, created_at, updated_at) "
-        "values (?, ?, 'running', ?, null, null, ?, ?)",
-        (run_id, run_type, json.dumps(input_data), now, now),
+    row = (
+        _client.table("agent_runs")
+        .insert({"run_type": run_type, "status": "running", "input": input_data, "created_at": now, "updated_at": now})
+        .execute()
     )
-    conn.commit()
-    conn.close()
-    return run_id
+    return row.data[0]["id"]
 
 
 def complete_run(run_id: str, output_data: dict | None = None, error: str | None = None):
     status = "failed" if error else "completed"
-    conn = get_conn()
-    conn.execute(
-        "update agent_runs set status = ?, output = ?, error = ?, updated_at = ? where id = ?",
-        (status, json.dumps(output_data) if output_data is not None else None, error, datetime.now(timezone.utc).isoformat(), run_id),
-    )
-    conn.commit()
-    conn.close()
+    _client.table("agent_runs").update(
+        {"status": status, "output": output_data, "error": error, "updated_at": datetime.now(timezone.utc).isoformat()}
+    ).eq("id", run_id).execute()
 
 
 def save_daily_brief(brief_date: str, summary: str, payload: dict) -> str:
-    brief_id = str(uuid.uuid4())
-    conn = get_conn()
-    conn.execute(
-        "insert into daily_briefs (id, brief_date, summary, payload, created_at) values (?, ?, ?, ?, ?)",
-        (brief_id, brief_date, summary, json.dumps(payload), datetime.now(timezone.utc).isoformat()),
+    row = (
+        _client.table("daily_briefs")
+        .insert({"brief_date": brief_date, "summary": summary, "payload": payload})
+        .execute()
     )
-    conn.commit()
-    conn.close()
-    return brief_id
+    return row.data[0]["id"]

@@ -7,22 +7,24 @@ verifiable phases. Each phase has a single owner-checkable "done means" line
 
 ## Current status (2026-06-23)
 
-Repo is empty (just README + claude.md). Decisions locked in for this build:
+Decisions locked in for this build:
 
 - **Local-first**: every phase below is built and verified on localhost
   before any cloud deploy. Deploy is its own later phase.
 - **Enterprise 3-service shape, kept as-is**: Next.js web app, FastAPI agent
   API, separate FastAPI MCP server — for the learning value, not because the
   MVP strictly needs 3 services.
-- **Credentials available now**: OpenAI API key only. Google OAuth app,
-  Supabase project, and Telegram bot are **not** set up yet. Until they
-  exist, the corresponding MCP tools return realistic mock data instead of
-  calling the real API — same function signature, swapped implementation
-  later, no orchestration code changes needed.
+- **Credentials available now**: OpenAI key, Supabase project, Google OAuth
+  client ID/secret. Telegram bot is **not** set up yet (explicitly deferred
+  by the user) — `telegram.send_message` stays mocked until Phase 6. Google
+  credentials exist but the OAuth token flow isn't built yet, so
+  Gmail/Calendar tools still return mock data until Phase 5.
+- Phases 1–4 are done: mocked MCP tools + agent orchestration + real OpenAI
+  + real Supabase storage, all verified end-to-end.
 
 ## Phase list (MVP)
 
-### Phase 1 — Repo scaffold
+### Phase 1 — Repo scaffold ✅ done
 Create the monorepo layout (`apps/web`, `apps/agent-api`,
 `services/mcp-server`, `packages/shared`, `infra/supabase`, `docs`) with
 minimal placeholder files (package.json / requirements.txt / Dockerfile
@@ -31,7 +33,7 @@ stubs where relevant). No logic yet.
 `services/mcp-server` each have a runnable (even if trivial) FastAPI app
 that serves `/health`.
 
-### Phase 2 — MCP server with mocked tools
+### Phase 2 — MCP server with mocked tools ✅ done
 Build the MCP server: bearer-token auth middleware, a tool registry, and
 stub implementations of:
 `gmail.search_recent_unread`, `gmail.search_needing_reply`,
@@ -44,7 +46,7 @@ SQLite table (`tool_calls`) with tool name, risk level, status, timestamp.
 returns mock JSON; a request with no/bad token returns 401; the log file/
 table has one row per call made.
 
-### Phase 3 — Agent API orchestration (mocked data, real OpenAI)
+### Phase 3 — Agent API orchestration (mocked data, real OpenAI) ✅ done
 Build the Agent API: MCP HTTP client, the four logical agents
 (`ChiefOfStaffAgent`, `GmailAgent`, `CalendarAgent`, `TaskAgent`) as plain
 functions, and `POST /run/good-morning`. The flow calls every MCP tool from
@@ -57,13 +59,15 @@ with the future Supabase tables in `infra/supabase/schema.sql`.
 readable daily brief generated from the mock Gmail/Calendar/task data, and a
 row is persisted with that output.
 
-### Phase 4 — Supabase swap-in
-Stand up a real Supabase project, run `infra/supabase/schema.sql`
+### Phase 4 — Supabase swap-in ✅ done
+Stood up a real Supabase project, ran `infra/supabase/schema.sql`
 (integrations, agent_runs, tool_calls, daily_briefs, tasks, memories,
-approvals), and swap the local storage in Phases 2–3 for Supabase calls
-behind the same functions.
+approvals), and swapped the local SQLite storage in both services for the
+Supabase client behind the same function names.
 **Done means:** same `/run/good-morning` call as Phase 3 now produces rows
 visible in the Supabase table editor; local storage code path removed.
+*Verified: `agent_runs`, `daily_briefs`, `tool_calls`, and `memories` rows
+confirmed via direct REST query against the real Supabase project.*
 
 ### Phase 5 — Google OAuth + real Gmail/Calendar read
 Add the Google OAuth flow (web app initiates, stores access+refresh tokens
