@@ -2,6 +2,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.auth import require_bearer_token
+from app.config import GOOGLE_CLIENT_ID, TELEGRAM_BOT_TOKEN
 from app.db import init_db, log_tool_call
 from app.google_oauth import build_auth_url, exchange_code_for_tokens
 from app.registry import TOOL_REGISTRY, is_blocked
@@ -33,6 +34,14 @@ def google_auth_start():
 def google_auth_callback(code: str):
     account_email = exchange_code_for_tokens(code)
     return HTMLResponse(f"<h1>Connected</h1><p>Google account linked: {account_email}</p>")
+
+
+@app.get("/status")
+def status():
+    return {
+        "google_credentials_configured": bool(GOOGLE_CLIENT_ID),
+        "telegram_configured": bool(TELEGRAM_BOT_TOKEN),
+    }
 
 
 @app.get("/tools", dependencies=[Depends(require_bearer_token)])

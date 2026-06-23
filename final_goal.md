@@ -18,20 +18,26 @@ This is not a "do everything" agent. It is a trusted layer that:
 
 ## Architecture shape (enterprise-style, for learning)
 
-Three services, deployed independently, talking over HTTP:
+Two deployable services, talking over HTTP — the web dashboard is a static
+build artifact, not a third running service:
 
 ```
-Web Dashboard (Next.js)
-        │
-        ▼
-Agent API (FastAPI) ── orchestrates agents, calls OpenAI, owns agent_runs
-        │  Bearer token
-        ▼
+Browser
+   │
+   ▼
+Agent API (FastAPI) ── serves the Next.js static export (apps/web/out) +
+   │                    orchestrates agents, calls OpenAI, owns agent_runs
+   │  Bearer token
+   ▼
 MCP Server (FastAPI, MCP-shaped tool registry) ── owns external API creds,
-        │                                          enforces tool risk policy,
-        ▼                                          logs every tool call
+   │                                              enforces tool risk policy,
+   ▼                                              logs every tool call
 External APIs (Gmail, Calendar, Telegram, ...) + Supabase (storage)
 ```
+
+The dashboard (`apps/web`, Next.js with `output: "export"`) builds to
+static HTML/JS and gets mounted by the Agent API alongside its `/api/*`
+routes — one process, no CORS, one less thing to deploy.
 
 Why split it this way: the Agent API never touches a Gmail/Telegram/Supabase
 credential directly — it only calls named tools on the MCP server. That's the

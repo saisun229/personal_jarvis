@@ -18,8 +18,11 @@ Decisions locked in for this build:
   (connected, real Gmail/Calendar data flowing). Telegram bot is **not** set
   up yet (explicitly deferred by the user) — `telegram.send_message` stays
   mocked until Phase 6.
-- Phases 1–5 are done: real OpenAI, real Supabase storage, real Gmail +
-  Calendar reads, all verified end-to-end. Only Telegram remains mocked.
+- Phases 1–5 and 7 are done: real OpenAI, real Supabase storage, real
+  Gmail + Calendar reads, and a working web dashboard, all verified
+  end-to-end. Phase 6 (Telegram) is intentionally skipped for now — only
+  `telegram.send_message` remains mocked. See `docs/how-it-works.md` for a
+  walkthrough of how the pieces fit together.
 
 ## Phase list (MVP)
 
@@ -84,23 +87,35 @@ requested in the auth URL.
 **Done means:** `/run/good-morning` produces a brief built from my actual
 inbox and calendar for today.
 
-### Phase 6 — Telegram alert
+### Phase 6 — Telegram alert ⏭ skipped for now (by user's choice)
 Create a Telegram bot, store `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`, and
 wire `telegram.send_message` to the real Telegram API. ChiefOfStaffAgent
-sends the finished brief there.
+sends the finished brief there. `telegram.send_message` stays mocked
+(logs what it would send) until this is picked back up.
 **Done means:** running `/run/good-morning` results in a real Telegram
 message arriving in my chat within seconds.
 
-### Phase 7 — Minimal web dashboard
-Build the Next.js dashboard: trigger button for `/run/good-morning`, latest
-brief view, tool-call log table, runs history, settings page (connection
-status only, no secrets rendered).
-**Done means:** I can open `localhost:3000`, click "Run", and watch the
-brief, tool logs, and run history populate without touching curl.
+### Phase 7 — Web dashboard ✅ done
+Built the Next.js dashboard (`apps/web`) as a **static export**
+(`output: "export"` in `next.config.ts`) rather than its own running
+server — `next build` produces `apps/web/out/`, and `apps/agent-api`
+mounts that directory as static files (`StaticFiles(..., html=True)`)
+after all its `/api/*` routes. One deployable service serves both the API
+and the dashboard; no CORS, no second port to manage in production.
+Pages: `/` (latest brief + trigger button), `/runs`, `/tool-logs`,
+`/settings` (connection status only, no secrets rendered). All four fetch
+client-side from `/api/...` (same origin).
+**Done means:** open the dashboard, click "Run good morning", watch the
+brief/runs/tool-logs populate without touching curl.
+*Verified: built `out/`, confirmed FastAPI serves `/`, `/runs/`,
+`/tool-logs/`, `/settings/` plus all `/api/*` routes from one process on
+port 8000; checked visually in the browser via the Codespace forwarded URL.*
 
 ### Phase 8 — Deploy
-Deploy MCP server + Agent API to Railway (or equivalent), web app to Vercel,
-point env vars at the deployed URLs.
+Two services to deploy now (not three): `apps/agent-api` (which also
+serves the built `apps/web/out`) and `services/mcp-server`, e.g. both to
+Railway. Build step for agent-api's image must run `npm run build` in
+`apps/web` before starting uvicorn so `out/` exists.
 **Done means:** the same end-to-end flow works against public URLs, not
 just localhost.
 

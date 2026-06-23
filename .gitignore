@@ -3,5 +3,7 @@ __pycache__/
 .venv/
 *.db
 .env
+.env.local
 node_modules/
 .next/
+out/

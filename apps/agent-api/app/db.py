@@ -35,3 +35,28 @@ def save_daily_brief(brief_date: str, summary: str, payload: dict) -> str:
         .execute()
     )
     return row.data[0]["id"]
+
+
+def list_runs(limit: int = 20) -> list[dict]:
+    rows = _client.table("agent_runs").select("*").order("created_at", desc=True).limit(limit).execute()
+    return rows.data
+
+
+def latest_brief() -> dict | None:
+    rows = _client.table("daily_briefs").select("*").order("created_at", desc=True).limit(1).execute()
+    return rows.data[0] if rows.data else None
+
+
+def list_tool_calls(limit: int = 50) -> list[dict]:
+    rows = _client.table("tool_calls").select("*").order("created_at", desc=True).limit(limit).execute()
+    return rows.data
+
+
+def google_connected() -> bool:
+    rows = _client.table("integrations").select("account_email").eq("provider", "google").execute()
+    return len(rows.data) > 0
+
+
+def google_account_email() -> str | None:
+    rows = _client.table("integrations").select("account_email").eq("provider", "google").execute()
+    return rows.data[0]["account_email"] if rows.data else None
