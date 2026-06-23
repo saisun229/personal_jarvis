@@ -15,12 +15,11 @@ Decisions locked in for this build:
   API, separate FastAPI MCP server — for the learning value, not because the
   MVP strictly needs 3 services.
 - **Credentials available now**: OpenAI key, Supabase project, Google OAuth
-  client ID/secret. Telegram bot is **not** set up yet (explicitly deferred
-  by the user) — `telegram.send_message` stays mocked until Phase 6. Google
-  credentials exist but the OAuth token flow isn't built yet, so
-  Gmail/Calendar tools still return mock data until Phase 5.
-- Phases 1–4 are done: mocked MCP tools + agent orchestration + real OpenAI
-  + real Supabase storage, all verified end-to-end.
+  (connected, real Gmail/Calendar data flowing). Telegram bot is **not** set
+  up yet (explicitly deferred by the user) — `telegram.send_message` stays
+  mocked until Phase 6.
+- Phases 1–5 are done: real OpenAI, real Supabase storage, real Gmail +
+  Calendar reads, all verified end-to-end. Only Telegram remains mocked.
 
 ## Phase list (MVP)
 
@@ -69,11 +68,19 @@ visible in the Supabase table editor; local storage code path removed.
 *Verified: `agent_runs`, `daily_briefs`, `tool_calls`, and `memories` rows
 confirmed via direct REST query against the real Supabase project.*
 
-### Phase 5 — Google OAuth + real Gmail/Calendar read
-Add the Google OAuth flow (web app initiates, stores access+refresh tokens
-in `integrations` table), and swap the Gmail/Calendar MCP tools from mock
-data to real `gmail.readonly` / `calendar.readonly` API calls using the
-stored tokens.
+### Phase 5 — Google OAuth + real Gmail/Calendar read ✅ done
+Added the Google OAuth flow directly on the MCP server (`GET
+/auth/google/start` + `/auth/google/callback`, since the dashboard doesn't
+exist yet) storing access+refresh tokens in the `integrations` table, and
+swapped the Gmail/Calendar MCP tools from mock data to real
+`gmail.readonly` / `calendar.readonly` API calls using those tokens, with
+auto-refresh in `google_oauth.get_valid_access_token()`.
+Two gotchas hit and resolved along the way: (1) in a Codespace, the OAuth
+redirect URI must be the forwarded `https://<codespace>-8001.app.github.dev`
+URL, not `localhost`; (2) Google silently drops sensitive scopes
+(gmail.readonly/calendar.readonly) from the granted token unless they're
+explicitly added under OAuth consent screen → Data Access, even if
+requested in the auth URL.
 **Done means:** `/run/good-morning` produces a brief built from my actual
 inbox and calendar for today.
 
