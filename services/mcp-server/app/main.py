@@ -1,5 +1,7 @@
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+from fastapi.openapi.utils import get_openapi
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from app.auth import require_bearer_token
 from app.config import GOOGLE_CLIENT_ID, TELEGRAM_BOT_TOKEN
@@ -10,7 +12,25 @@ from app.registry import TOOL_REGISTRY, is_blocked
 # Import tool modules so their @tool decorators register into TOOL_REGISTRY.
 from app.tools import calendar, gmail, memory, tasks, telegram  # noqa: F401
 
-app = FastAPI(title="Jarvis MCP Server")
+# docs/redoc/openapi are disabled by default and re-exposed below behind the
+# same bearer token as every other tool-calling route — this is a
+# machine-to-machine API, not something meant to be publicly browsable.
+app = FastAPI(title="Jarvis MCP Server", docs_url=None, redoc_url=None, openapi_url=None)
+
+
+@app.get("/openapi.json", dependencies=[Depends(require_bearer_token)], include_in_schema=False)
+def openapi_schema():
+    return JSONResponse(get_openapi(title=app.title, version=app.version, routes=app.routes))
+
+
+@app.get("/docs", dependencies=[Depends(require_bearer_token)], include_in_schema=False)
+def docs():
+    return get_swagger_ui_html(openapi_url="/openapi.json", title=f"{app.title} - Swagger UI")
+
+
+@app.get("/redoc", dependencies=[Depends(require_bearer_token)], include_in_schema=False)
+def redoc():
+    return get_redoc_html(openapi_url="/openapi.json", title=f"{app.title} - ReDoc")
 
 
 @app.on_event("startup")
