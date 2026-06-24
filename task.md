@@ -111,18 +111,25 @@ brief/runs/tool-logs populate without touching curl.
 `/tool-logs/`, `/settings/` plus all `/api/*` routes from one process on
 port 8000; checked visually in the browser via the Codespace forwarded URL.*
 
-### Phase 8 — Deploy 🚧 pipeline built, waiting on Fly account setup
-Two services deploy now (not three): `apps/agent-api` (Dockerfile
+### Phase 8 — Deploy ✅ done — live at jarvis-agent-api.fly.dev
+Two services deployed (not three): `apps/agent-api` (Dockerfile
 multi-stage builds `apps/web` into a static export, then bundles it with
-the Python app) and `services/mcp-server`, both to Fly.io as separate
-apps. `.github/workflows/deploy.yml` runs on every push to `master` and
-deploys both via `flyctl deploy`. See `docs/deploy.md` for the one-time
-account/secrets setup (Fly account, `flyctl`, two `fly apps create`,
-`fly secrets set` per app, `FLY_API_TOKEN` GitHub secret) — that part is
-on the user, the pipeline code is done.
+the Python app) and `services/mcp-server`, both on Fly.io. Fly apps
+created, secrets set on both (fresh production `JARVIS_MCP_TOKEN`, not
+`dev-token`), `FLY_API_TOKEN` added as a GitHub repo secret.
+`.github/workflows/deploy.yml` runs on every push to `master` and
+redeploys both via `flyctl deploy`.
+Real bug hit and fixed: `flyctl` resolves a `fly.toml`'s `dockerfile`
+path relative to the directory *containing that `fly.toml`*, not the
+build context — both configs had to move to the repo root
+(`fly.mcp-server.toml`, `fly.agent-api.toml`) instead of living next to
+each service. Documented in `docs/deploy.md`.
 **Done means:** the same end-to-end flow works against public
 `*.fly.dev` URLs, not just localhost, and a routine push to `master`
 redeploys both services without manual steps.
+*Verified: `POST https://jarvis-agent-api.fly.dev/api/run/good-morning`
+returned a real brief built from live Gmail/Calendar through the
+deployed `jarvis-mcp-server.fly.dev`, persisted to Supabase.*
 
 ## Explicitly deferred past MVP
 Approval queue UI, follow-up detector heuristics, meeting prep, GitHub
