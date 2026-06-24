@@ -5,10 +5,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
 from app.agents import chief_of_staff
+from app.auth import basic_auth_middleware
 from app.config import MCP_SERVER_URL, OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL
 from app.db import google_account_email, google_connected, init_db, latest_brief, list_runs, list_tool_calls
 
 app = FastAPI(title="Jarvis Agent API")
+app.middleware("http")(basic_auth_middleware)
 
 WEB_OUT_DIR = Path(__file__).resolve().parents[2] / "web" / "out"
 
