@@ -111,13 +111,18 @@ brief/runs/tool-logs populate without touching curl.
 `/tool-logs/`, `/settings/` plus all `/api/*` routes from one process on
 port 8000; checked visually in the browser via the Codespace forwarded URL.*
 
-### Phase 8 — Deploy
-Two services to deploy now (not three): `apps/agent-api` (which also
-serves the built `apps/web/out`) and `services/mcp-server`, e.g. both to
-Railway. Build step for agent-api's image must run `npm run build` in
-`apps/web` before starting uvicorn so `out/` exists.
-**Done means:** the same end-to-end flow works against public URLs, not
-just localhost.
+### Phase 8 — Deploy 🚧 pipeline built, waiting on Fly account setup
+Two services deploy now (not three): `apps/agent-api` (Dockerfile
+multi-stage builds `apps/web` into a static export, then bundles it with
+the Python app) and `services/mcp-server`, both to Fly.io as separate
+apps. `.github/workflows/deploy.yml` runs on every push to `master` and
+deploys both via `flyctl deploy`. See `docs/deploy.md` for the one-time
+account/secrets setup (Fly account, `flyctl`, two `fly apps create`,
+`fly secrets set` per app, `FLY_API_TOKEN` GitHub secret) — that part is
+on the user, the pipeline code is done.
+**Done means:** the same end-to-end flow works against public
+`*.fly.dev` URLs, not just localhost, and a routine push to `master`
+redeploys both services without manual steps.
 
 ## Explicitly deferred past MVP
 Approval queue UI, follow-up detector heuristics, meeting prep, GitHub
